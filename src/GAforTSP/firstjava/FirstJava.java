@@ -17,8 +17,7 @@ public class FirstJava {
     static int theHe = 0;
     static int maxTheHe = 10000;
     static int maxCaThe = 100; //tối thiếu là 100
-    static double tiLeLaiGhep = 0.5;
-    static double tiLeDotBien = 0.5;
+    static double tiLeDotBien = 1; //Đảm bảo tính đa dạng của quần thể
     static int startCity = 1; //Thành phố bắt đầu (Sử dụng trong hàm khoiTaoQuanThe_Random())
 
     static int[] bestCaThe = new int[maxTheHe+5]; //[Thế hệ] Trả về nhiễm sắc thể tốt nhất của thế hệ đó
@@ -31,6 +30,9 @@ public class FirstJava {
     static boolean print_first_theHe = false; //Có hay không in ra các NST trong thế hệ đầu tiên
     static boolean print_fitness = false; //Có hay không in ra fitness của 1 NST trong 1 thế hệ
     static boolean print_eFitness = true; //In ra nhiễm sắc thể và điểm fitness tốt nhất trong thế hệ
+
+    static int luaChonPhepLai = 2; // Lựa chọn phép lai để sinh quần thể mới [1]lai 1 điểm cắt || [2]lai thứ tự
+    //Sử dụng phép lai 2 sẽ cho kết quả tuyệt hơn phép lai 1
 
     //Các giá trị tốt nhất (Sử dụng để ghi lại câu trả lời)
     static int bestNST;
@@ -143,9 +145,9 @@ public class FirstJava {
         nhiemSacThe++;
         //Tiếp tục tạo các cá thể còn lại của thế hệ bằng cách hoán vị gen của cá thể đầu tiên
         while(nhiemSacThe!=maxCaThe){
-            System.arraycopy(caThe[theHe][nhiemSacThe-1], 0, caThe[theHe][nhiemSacThe], 0, caThe[theHe][0].length);
+            System.arraycopy(caThe[theHe][0], 0, caThe[theHe][nhiemSacThe], 0, caThe[theHe][0].length);
             //khởi tạo số lần hoán vị
-            int count = genRandom(totalCities/2)+1;
+            int count = totalCities;
             int p1,p2,temp;
             while (count>0){
                 p1 = genRandom(totalCities);
@@ -191,11 +193,11 @@ public class FirstJava {
                 eFitness = fitnessValue;
                 eNhiemSacThe = nhiemSacThe;
             }
-            if(print_fitness) System.out.println(theHe+"-"+nhiemSacThe+": "+fitnessValue);
+            if(print_fitness) System.out.println(theHe+"-"+nhiemSacThe+": "+"D|"+totalDist+" F|"+fitnessValue);
             nhiemSacThe++;
             totalDist = 0;
         }
-        if(print_eFitness) System.out.println("[Tốt nhất] "+theHe+"-"+eNhiemSacThe+" : "+eFitness);
+        if(print_eFitness) System.out.println("[Tốt nhất] "+theHe+"-"+eNhiemSacThe+" : "+"D|"+1/eFitness+" F|"+eFitness);
         //Lưu giá trị NST tốt nhất trong thế hệ
         bestCaThe[theHe] = eNhiemSacThe;
         if(theHe==maxTheHe-1){ //Do thế hệ được tính từ 0 nên chúng ta chỉ xét đến maxTheHe-1
@@ -222,6 +224,7 @@ public class FirstJava {
     }
 
     public static int[] laiGhep(int[] cha,int[] me){
+        //Phương pháp lai ghép 1 điểm cắt
         int[] child = new int[totalCities+5];
         int p = genRandom(totalCities);
         System.arraycopy(cha, 1, child, 1, p); //Cắt ở vị trí p của NST cha và đưa vào NST con
@@ -234,6 +237,57 @@ public class FirstJava {
             child[contro] = me[i];
             contro++;
         }
+        return child;
+    }
+    public static int[][] laiGhepOX(int[] cha,int[] me){
+        //phương pháp lai ghép thứ tự
+        int[][] child = new int[2][totalCities+5];
+        //Chọn 2 điểm lai ngẫu nhiên
+        int p1,p2;
+        p1 = genRandom(totalCities-1);
+        p2 = genRandom(totalCities);
+        if(p1==totalCities-1) p2=totalCities;
+        while (p1>=p2) p2=genRandom(totalCities);
+        //Con 1:
+        //Sao chép phần giữa 2 điểm lai của cha vào con 1
+        for(int i=p1;i<=p2;i++){
+            child[0][i]=cha[i];
+        }
+//        Các gen chưa được sao chép, tiến hành thêm vào con 1 bắt đầu từ điểm lai thứ 2, theo thứ tự xuất hiện ở mẹ
+        int contro;
+        if(p2==totalCities) contro = 1;
+        else contro = p2+1;
+        vonglap1:
+        for(int i=1;i<=totalCities;i++){
+            for(int j=1;j<=totalCities;j++){ //Sàng lọc những gen trong NST mẹ chưa có trong NST con để thêm vào NST con
+                if(me[i]==child[0][j]) continue vonglap1;
+            }
+            child[0][contro] = me[i];
+            contro++;
+            if(contro>totalCities) contro = 1;
+        }
+        //Con 2 làm tương tự
+        if(p2==totalCities) contro = 1;
+        else contro = p2+1;
+        for(int i=p1;i<=p2;i++){
+            child[1][i]=me[i];
+        }
+//        Các gen chưa được sao chép, tiến hành thêm vào con 1 bắt đầu từ điểm lai thứ 2, theo thứ tự xuất hiện ở mẹ
+        vonglap2:
+        for(int i=1;i<=totalCities;i++){
+            for(int j=1;j<=totalCities;j++){ //Sàng lọc những gen trong NST mẹ chưa có trong NST con để thêm vào NST con
+                if(cha[i]==child[1][j]) continue vonglap2;
+            }
+            child[1][contro] = cha[i];
+            contro++;
+            if(contro>totalCities) contro = 1;
+        }
+//        for(int i=0;i<2;i++){
+//            for(int j=1;j<=totalCities;j++){
+//                System.out.print(child[i][j]+" ");
+//            }
+//            System.out.print("\n");
+//        }
         return child;
     }
     public static int luaChonChaMe(){
@@ -264,45 +318,140 @@ public class FirstJava {
     }
     public static void theHeTiepTheo(){
         int parentA,parentB;
-        int badFitness;
-
-        System.arraycopy(caThe[theHe-1], 0, caThe[theHe], 0, maxCaThe);
-        //Lai ghép để tạo quần thể mới
-        for(int soLanLaiGhep=0;soLanLaiGhep<maxCaThe*tiLeLaiGhep;soLanLaiGhep++){
-            parentA = luaChonChaMe();
-            parentB = luaChonChaMe();
-            while (parentB == parentA) parentB = luaChonChaMe();
-
-            int[] child = laiGhep(caThe[theHe-1][parentA],caThe[theHe-1][parentB]);
-
-            badFitness=0;
-            for(int i=1;i<maxCaThe;i++){
-                if(fitness[theHe-1][badFitness]>fitness[theHe-1][i]){
-                    badFitness=i;
-                }
-            }
-            System.arraycopy(child, 1, caThe[theHe][badFitness], 1, totalCities);
-        }
-        //Tạo đột biến
+        //đưa nhiễm sắc thể tốt nhất của thế hệ trước qua thế hệ mới (NST 0)
+        int eNST = bestCaThe[theHe-1];
+        System.arraycopy(caThe[theHe-1][eNST], 0, caThe[theHe][0], 0, caThe[theHe-1][eNST].length);
+        int[][] chonLocCaThe = new int[maxCaThe*3][totalCities+5];
+        double[] fitnesschonLocCaThe = new double[maxCaThe*3];
+        int danhDauChonLoc=0; //Biến dùng để đánh dấu vị trí chèn cá thể vào trong bảng chonLocCaThe
         for(int i=0;i<maxCaThe;i++){
-            double rand = genRandomDouble();
-            if(rand<tiLeDotBien){
-                int count = genRandom(totalCities/20);
-                int p1,p2,temp;
-                while (count>0){
-                    p1 = genRandom(totalCities);
-                    p2 = genRandom(totalCities);
-                    while(p1==p2){
-                        p2 = genRandom(totalCities);
+            if(i!=eNST){
+                System.arraycopy(caThe[theHe-1][i], 0, chonLocCaThe[danhDauChonLoc], 0, caThe[theHe-1][i].length);
+                fitnesschonLocCaThe[danhDauChonLoc] = fitness[theHe-1][i];
+                if(danhDauChonLoc>0){
+                    for(int j=0;j<danhDauChonLoc;j++){
+                        if(fitnesschonLocCaThe[j]<fitnesschonLocCaThe[danhDauChonLoc]){
+                            //Đổi chỗ fitness
+                            double tempFitness = fitnesschonLocCaThe[j];
+                            fitnesschonLocCaThe[j] = fitnesschonLocCaThe[danhDauChonLoc];
+                            fitnesschonLocCaThe[danhDauChonLoc] = tempFitness;
+                            //Đổi chỗ cá thể
+                            int[] tempCaThe = chonLocCaThe[j];
+                            chonLocCaThe[j] = chonLocCaThe[danhDauChonLoc];
+                            chonLocCaThe[danhDauChonLoc] = tempCaThe;
+                        }
                     }
-                    temp = caThe[theHe][i][p1];
-                    caThe[theHe][i][p1] = caThe[theHe][i][p2];
-                    caThe[theHe][i][p2] = temp;
-                    count--;
                 }
+                danhDauChonLoc++;
             }
         }
 
+        //Lai ghép để tạo quần thể mới
+        if(luaChonPhepLai==1){
+            for(int soLanLaiGhep=1;soLanLaiGhep<maxCaThe;soLanLaiGhep++){
+                parentA = luaChonChaMe();
+                parentB = luaChonChaMe();
+                while (parentB == parentA) parentB = luaChonChaMe();
+
+                int[] child = laiGhep(caThe[theHe-1][parentA],caThe[theHe-1][parentB]);
+                int cityA,cityB;
+                double totalDistChild=0;
+                for(int i=1;i<totalCities;i++){
+                    cityA = child[i];
+                    cityB = child[i+1];
+                    totalDistChild += khoangCach[cityA][cityB];
+                }
+                double fitnessChild = 1/totalDistChild;
+                System.arraycopy(child, 0, chonLocCaThe[danhDauChonLoc], 0, child.length);
+                fitnesschonLocCaThe[danhDauChonLoc] = fitnessChild;
+                for(int j=0;j<danhDauChonLoc;j++){
+                    if(fitnesschonLocCaThe[j]<fitnesschonLocCaThe[danhDauChonLoc]){
+                        //Đổi chỗ fitness
+                        double tempFitness = fitnesschonLocCaThe[j];
+                        fitnesschonLocCaThe[j] = fitnesschonLocCaThe[danhDauChonLoc];
+                        fitnesschonLocCaThe[danhDauChonLoc] = tempFitness;
+                        //Đổi chỗ cá thể
+                        int[] tempCaThe = chonLocCaThe[j];
+                        chonLocCaThe[j] = chonLocCaThe[danhDauChonLoc];
+                        chonLocCaThe[danhDauChonLoc] = tempCaThe;
+                    }
+                }
+
+//            System.arraycopy(child, 0, caThe[theHe][soLanLaiGhep], 0, child.length);
+            }
+        }
+        if(luaChonPhepLai==2){
+            for(int soLanLaiGhep=1;soLanLaiGhep<maxCaThe;soLanLaiGhep++){
+                parentA = luaChonChaMe();
+                parentB = luaChonChaMe();
+                while (parentB == parentA) parentB = luaChonChaMe();
+
+                int[][] child = laiGhepOX(caThe[theHe-1][parentA],caThe[theHe-1][parentB]);
+                int cityA,cityB;
+                double totalDistChild=0;
+                double fitnessChild;
+                //Con 1
+                for(int i=1;i<totalCities;i++){
+                    cityA = child[0][i];
+                    cityB = child[0][i+1];
+                    totalDistChild += khoangCach[cityA][cityB];
+                }
+                fitnessChild = 1/totalDistChild;
+                System.arraycopy(child[0], 0, chonLocCaThe[danhDauChonLoc], 0, child[0].length);
+                fitnesschonLocCaThe[danhDauChonLoc] = fitnessChild;
+                for(int j=0;j<danhDauChonLoc;j++){
+                    if(fitnesschonLocCaThe[j]<fitnesschonLocCaThe[danhDauChonLoc]){
+                        //Đổi chỗ fitness
+                        double tempFitness = fitnesschonLocCaThe[j];
+                        fitnesschonLocCaThe[j] = fitnesschonLocCaThe[danhDauChonLoc];
+                        fitnesschonLocCaThe[danhDauChonLoc] = tempFitness;
+                        //Đổi chỗ cá thể
+                        int[] tempCaThe = chonLocCaThe[j];
+                        chonLocCaThe[j] = chonLocCaThe[danhDauChonLoc];
+                        chonLocCaThe[danhDauChonLoc] = tempCaThe;
+                    }
+                }
+                //Con 2
+                totalDistChild = 0;
+                danhDauChonLoc++;
+                for(int i=1;i<totalCities;i++){
+                    cityA = child[1][i];
+                    cityB = child[1][i+1];
+                    totalDistChild += khoangCach[cityA][cityB];
+                }
+                fitnessChild = 1/totalDistChild;
+                System.arraycopy(child[1], 0, chonLocCaThe[danhDauChonLoc], 0, child[1].length);
+                fitnesschonLocCaThe[danhDauChonLoc] = fitnessChild;
+                for(int j=0;j<danhDauChonLoc;j++){
+                    if(fitnesschonLocCaThe[j]<fitnesschonLocCaThe[danhDauChonLoc]){
+                        //Đổi chỗ fitness
+                        double tempFitness = fitnesschonLocCaThe[j];
+                        fitnesschonLocCaThe[j] = fitnesschonLocCaThe[danhDauChonLoc];
+                        fitnesschonLocCaThe[danhDauChonLoc] = tempFitness;
+                        //Đổi chỗ cá thể
+                        int[] tempCaThe = chonLocCaThe[j];
+                        chonLocCaThe[j] = chonLocCaThe[danhDauChonLoc];
+                        chonLocCaThe[danhDauChonLoc] = tempCaThe;
+                    }
+                }
+
+//            System.arraycopy(child, 0, caThe[theHe][soLanLaiGhep], 0, child.length);
+            }
+        }
+        for(int i=1;i<maxCaThe;i++){
+            System.arraycopy(chonLocCaThe[i], 0, caThe[theHe][i], 0, chonLocCaThe[i].length);
+        }
+        //Tạo đột biến (Không tạo đột biến trên NST tốt nhất từ thế hệ trước- NST số 0)
+        for(int nhiemSacThe = 1;nhiemSacThe<maxCaThe;nhiemSacThe++){
+            double rand = genRandomDouble();
+            if(rand<=tiLeDotBien){
+                int p=genRandom(totalCities-1);
+                int temp;
+                temp = caThe[theHe][nhiemSacThe][p];
+                caThe[theHe][nhiemSacThe][p] = caThe[theHe][nhiemSacThe][p+1];
+                caThe[theHe][nhiemSacThe][p+1] = temp;
+            }
+        }
     }
     public static void main(String[] args){
         System.out.println("Chương trình đã chạy!");
